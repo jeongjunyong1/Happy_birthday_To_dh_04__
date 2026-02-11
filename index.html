@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>오늘의 퀴즈</title>
+
+<style>
+body{margin:0;font-family:sans-serif;background:white}
+.container{max-width:420px;margin:auto;padding:30px}
+.card{background:white;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:24px}
+
+.primary{
+background:#3182f6;color:white;border:none;
+padding:14px 36px;border-radius:14px;margin-top:20px
+}
+
+.choice{
+background:#f2f4f6;border:none;padding:14px;border-radius:12px;width:100%;margin-bottom:10px
+}
+
+.progress{height:6px;background:#eee;border-radius:6px;margin-bottom:15px}
+.bar{height:100%;width:0;background:#3182f6;border-radius:6px}
+
+.avatar{
+width:120px;height:120px;
+background:url("avatar.png") center/contain no-repeat;
+margin:auto;
+animation:float 3s ease-in-out infinite;
+}
+
+#opening .avatar{
+width:220px;height:220px;margin:40px auto;
+}
+
+.preAvatar{
+width:220px;height:220px;
+background:url("intro.png") center/contain no-repeat;
+margin:40px auto;
+animation:float 3s ease-in-out infinite;
+}
+
+.popupAvatar{
+width:90px;height:90px;
+margin:0 auto 10px;
+background:center/contain no-repeat;
+}
+
+.jump{animation:jump .4s}
+@keyframes jump{50%{transform:translateY(-20px)}}
+@keyframes float{50%{transform:translateY(-15px)}}
+.sad{filter:grayscale(1)}
+
+.fade{opacity:0;transition:.4s}
+
+.screen{
+height:100vh;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+}
+
+/* 버튼 균등 */
+
+.preBtns{
+display:flex;
+gap:12px;
+width:100%;
+max-width:300px;
+}
+
+.preBtns button{
+flex:1;
+white-space:nowrap;
+height:48px;
+padding:0;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:16px;
+}
+
+
+
+/* modal */
+
+.modal{
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:rgba(0,0,0,.35);
+display:none;justify-content:center;align-items:center;
+}
+
+.modalBox{
+background:white;padding:25px;border-radius:20px;
+width:80%;max-width:300px;text-align:center;
+animation:pop .3s;
+}
+
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1)}}
+
+/* 결과 */
+
+.resultFirework{
+position:fixed;
+top:50%;left:50%;
+transform:translate(-50%,-50%);
+width:200px;height:200px;
+background:url("firework.png") center/contain no-repeat;
+animation:blink 1s 3;
+}
+
+@keyframes blink{
+0%{opacity:1}
+50%{opacity:.3}
+100%{opacity:1}
+}
+</style>
+</head>
+
+<body>
+
+<!-- 프리 오프닝 -->
+<div id="preOpening" class="screen">
+
+<h1>🎂 자기 생일축하해!</h1>
+<div class="preAvatar"></div>
+
+<p>자기 반응이 좋아서 간단히 만들어봤어요..!<br>해볼래요?</p>
+
+<div class="preBtns">
+<button class="primary" onclick="join()">참여하기</button>
+<button class="choice" onclick="leave()">나가기</button>
+</div>
+
+</div>
+
+<!-- 오프닝 -->
+<div id="opening" class="screen fade" style="display:none">
+
+<h1>시작해볼까요?!</h1>
+<div class="avatar"></div>
+<button class="primary" onclick="start()">시작하기</button>
+
+</div>
+
+<!-- 퀴즈 -->
+
+<div class="container fade" id="quizPage">
+
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="avatar" id="avatar"></div>
+
+<div class="card">
+<div id="question"></div>
+<div id="choices"></div>
+</div>
+
+</div>
+
+<!-- 팝업 -->
+
+<div class="modal" id="modal">
+<div class="modalBox">
+<div class="popupAvatar" id="popupAvatar"></div>
+<div id="modalText"></div>
+<button class="primary" onclick="closeModal()">확인</button>
+</div>
+</div>
+
+<script>
+
+let quiz=JSON.parse(localStorage.getItem("quiz"))||[
+{
+q:"Q1. 우리는 오늘 몇일?",
+a:["1100일","1170일","1200일"],
+c:1,
+f:["진짜...??","ㅎㅎ 날짜도 나름..? 깔끔해! ","... 한달 뒤에 봐여....."]
+},
+
+{
+q:"Q2. 우리가 처음 여행 간곳은?",
+a:["제주도","대부도","강릉"],
+c:2,
+f:["제주도 좋긴해... 진짜 또가자!","여긴 여름에 갔었어요 조금 더 추웠던거같은데...?","ㅎㅎ 정답입니당!"]
+},
+
+{
+q:"Q3. 우리가 처음 맞춘건?",
+a:["팔찌","향수","반지"],
+c:0,
+f:["ㅎㅎ 100일때 처음 맞췄어! 내가 잃어버려서.... 다시 맞추긴 했는데......허헣","이건 300일이에용! ","이건 남산 놀러갈때 맞췄었네용~"]
+},
+
+{
+q:"Q4. 우리가 사귄 날짜는?",
+a:["22년 11월17일","22년 11월 30일","23년 11월 30일"],
+c:1,
+f:["이날은 수능보고 있었어요..","아 이날 디게 떨렸었는데 벌써 3년도 넘었어..! ㅎㅎ","어라 1년 어디갔어.."]
+},
+
+{
+q:"Q5. 우리는 300일에 뭐했을까요?",
+a:["[엘리멘탈]보기","남산타워 가기","잠실 놀러가기"],
+c:2,
+f:["이건 200일이에용 이날 신발도 같이 맞췄어!","200일 기념으로 갔었나봐..! 반지도 만들고 그랬어! ","이날 향수도 만들고 아쿠아리움 놀러갔어요!"]
+},
+
+{
+q:"Q6. 우리가 처음 와인 마신건?",
+a:["1주년","2주년","3주년"],
+c:0,
+f:["1주년때 그 더숲? 지하에 카페 영화관가서 재즈 영화 보고 마셨어요!","이때 모아나2보고 같이 소주마셨네..!","3주년때는 방탈출 가봤어! 성신!"]
+},
+
+{
+q:"Q7. 도현이가 받았던 생일선물이 아닌건?",
+a:["가방","지갑","옷"],
+c:2,
+f:["이게 22살 생일때 줬어요!","이건 20살 생일! 21살은 나노블럭이넹","옷을 준적이 없었네...!"]
+},
+
+{
+q:"Q8. 도현이가 가장 좋아하는 데이트는?",
+a:["오버워치 피방데이트","준용이와 무한 산책","아무것도 안하고 쉬기"],
+c:0,
+f:["아마 이거지 않을까...?","ㅋㅋㅋㅋ 거짓말쟁이","오...?"]
+},
+
+{
+q:"Q9. 우리가 같이 공부한건?",
+a:["운전면허","토익","코딩"],
+c:1,
+f:["비슷한 시기에 따긴했지만 같이 공부하진 않았어용...","허허 공부를 했었나... 암튼.. 학원 같이 갔으니까..!","허허 소재고갈.. 코딩은 내가 지금 하고있어....ㅎ"]
+},
+
+{
+q:"Q10. 도현이가 지금 제일 하고 싶은건?",
+a:["나 왕창 안아주기","잘만들었다고 칭찬해주기","둘 다 하기"],
+c:2,
+f:["ㅎㅎㅎㅎㅎㅎㅎㅎ","ㅎㅎㅎㅎㅎㅎㅎㅎ","ㅎㅎㅎㅎㅎㅎㅎㅎ"]
+}
+
+
+];
+
+let i=0;
+let correct=false;
+
+const modal=document.getElementById("modal");
+const modalText=document.getElementById("modalText");
+const popupAvatar=document.getElementById("popupAvatar");
+const avatar=document.getElementById("avatar");
+const q=document.getElementById("question");
+const c=document.getElementById("choices");
+const bar=document.getElementById("bar");
+
+/* 프리 오프닝 */
+
+function join(){
+preOpening.classList.add("fade");
+setTimeout(()=>{
+preOpening.style.display="none";
+opening.style.display="flex";
+opening.classList.remove("fade");
+},400);
+}
+
+function leave(){
+popupAvatar.style.backgroundImage='url("sad.png")';
+modalText.innerText="그런 선택지는 없어 😏";
+modal.style.display="flex";
+}
+
+/* 오프닝 */
+
+function start(){
+opening.classList.add("fade");
+setTimeout(()=>{
+opening.style.display="none";
+quizPage.classList.remove("fade");
+load();
+},400);
+}
+
+/* 퀴즈 */
+
+function load(){
+q.innerText=quiz[i].q;
+c.innerHTML="";
+bar.style.width=(i/quiz.length*100)+"%";
+avatar.classList.remove("sad");
+
+quiz[i].a.forEach((t,n)=>{
+let b=document.createElement("button");
+b.className="choice";
+b.innerText=t;
+b.onclick=()=>select(n);
+c.appendChild(b);
+});
+}
+
+function select(n){
+correct=n===quiz[i].c;
+modalText.innerText=quiz[i].f[n];
+
+popupAvatar.classList.remove("jump");
+
+if(correct){
+avatar.classList.add("jump");
+popupAvatar.style.backgroundImage='url("avatar.png")';
+popupAvatar.classList.add("jump");
+}else{
+avatar.classList.add("sad");
+popupAvatar.style.backgroundImage='url("sad.png")';
+}
+
+modal.style.display="flex";
+}
+
+function closeModal(){
+modal.style.display="none";
+avatar.classList.remove("jump","sad");
+
+if(correct){
+i++;
+i<quiz.length?load():finish();
+}
+}
+
+/* 결과 */
+
+function finish(){
+
+document.body.innerHTML=`
+<div style="height:100vh;display:flex;justify-content:center;align-items:center;font-size:30px;font-weight:bold">
+🎉생일축하해! 선물은 나야!🎉 
+</div>
+`;
+
+for(let r=0;r<3;r++){
+setTimeout(()=>{
+for(let j=0;j<10;j++)createFirework();
+},r*900);
+}
+
+
+let big=document.createElement("div");
+big.className="resultFirework";
+document.body.appendChild(big);
+
+setTimeout(()=>big.remove(),3000);
+}
+
+function createFirework(){
+
+let f=document.createElement("div");
+f.style.position="fixed";
+f.style.left=Math.random()*100+"%";
+f.style.top=Math.random()*80+"%";
+document.body.appendChild(f);
+
+for(let i=0;i<12;i++){
+let p=document.createElement("div");
+p.style.position="absolute";
+p.style.width="6px";
+p.style.height="6px";
+p.style.borderRadius="50%";
+p.style.background=["#3182f6","#ff5f5f","#ffd43b"][Math.floor(Math.random()*3)];
+f.appendChild(p);
+
+let x=Math.random()*100-50;
+let y=Math.random()*100-50;
+
+p.animate([
+{transform:"translate(0,0)",opacity:1},
+{transform:`translate(${x}px,${y}px)`,opacity:0}
+],{duration:900});
+}
+
+setTimeout(()=>f.remove(),1000);
+}
+</script>
+
+</body>
+</html>
